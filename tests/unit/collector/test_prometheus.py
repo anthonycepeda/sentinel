@@ -1,5 +1,5 @@
 import json
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
 
 import httpx
@@ -68,9 +68,23 @@ class TestQueryRangeSuccess:
 
 
 class TestQueryRangeErrors:
-    def test_http_error_raises_prometheus_error(self):
+    def test_non_json_5xx_raises_prometheus_error(self):
         def handler(request: httpx.Request) -> httpx.Response:
             return httpx.Response(500, text="upstream exploded")
+
+        with pytest.raises(PrometheusError, match="HTTP 500"):
+            query_range(
+                _client(handler),
+                query="x",
+                start=START,
+                end=END,
+                step="60s",
+                service="s",
+            )
+
+    def test_transport_failure_raises_prometheus_error(self):
+        def handler(request: httpx.Request) -> httpx.Response:
+            raise httpx.ConnectError("dns lookup failed")
 
         with pytest.raises(PrometheusError, match="request failed"):
             query_range(
@@ -82,9 +96,9 @@ class TestQueryRangeErrors:
                 service="s",
             )
 
-    def test_prometheus_error_status_raises(self):
+    def test_prometheus_400_with_error_body_raises(self):
         def handler(request: httpx.Request) -> httpx.Response:
-            return httpx.Response(200, json=_load("query_range_error.json"))
+            return httpx.Response(400, json=_load("query_range_error.json"))
 
         with pytest.raises(PrometheusError, match=r"bad_data|parse error"):
             query_range(
@@ -132,6 +146,36 @@ class TestQueryRangeErrors:
                 query="x",
                 start=START,
                 end=END,
+                step="60s",
+                service="s",
+            )
+
+
+class TestUtcEnforcement:
+    def _noop_handler(self, request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200, json={"status": "success", "data": {"resultType": "matrix", "result": []}}
+        )
+
+    def test_naive_start_rejected(self):
+        with pytest.raises(PrometheusError, match="start must be"):
+            query_range(
+                _client(self._noop_handler),
+                query="x",
+                start=datetime(2026, 3, 13, 12, 0),
+                end=END,
+                step="60s",
+                service="s",
+            )
+
+    def test_non_utc_end_rejected(self):
+        paris = timezone(timedelta(hours=1))
+        with pytest.raises(PrometheusError, match="end must be"):
+            query_range(
+                _client(self._noop_handler),
+                query="x",
+                start=START,
+                end=datetime(2026, 3, 13, 12, 5, tzinfo=paris),
                 step="60s",
                 service="s",
             )

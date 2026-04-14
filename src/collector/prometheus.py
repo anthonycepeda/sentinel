@@ -21,8 +21,13 @@ def query_range(
 ) -> list[MetricRecord]:
     """Run a Prometheus `query_range` and normalize the response into MetricRecord list.
 
-    Raises PrometheusError on HTTP failure or non-success Prometheus status.
+    `step` is a Prometheus duration string (e.g. "60s", "5m"). `start` and `end` must
+    be timezone-aware UTC datetimes. Raises PrometheusError on HTTP failure or
+    non-success Prometheus status (including HTTP 400 with an error body).
     """
+    _require_utc("start", start)
+    _require_utc("end", end)
+
     params = {
         "query": query,
         "start": start.timestamp(),
@@ -31,17 +36,27 @@ def query_range(
     }
     try:
         response = client.get("/api/v1/query_range", params=params)
-        response.raise_for_status()
     except httpx.HTTPError as e:
         raise PrometheusError(f"Prometheus request failed: {e}") from e
 
-    payload = response.json()
+    # Prometheus returns a JSON error body (with status=error) for HTTP 400/422 on bad
+    # queries. Parse first, fall back to HTTP status if body isn't JSON.
+    try:
+        payload = response.json()
+    except ValueError:
+        raise PrometheusError(f"Prometheus request failed: HTTP {response.status_code}") from None
+
     if payload.get("status") != "success":
         raise PrometheusError(
             f"Prometheus returned {payload.get('status')}: {payload.get('error', 'unknown error')}"
         )
 
     return _normalize_matrix(payload["data"], service)
+
+
+def _require_utc(name: str, ts: datetime) -> None:
+    if ts.tzinfo is None or ts.utcoffset() != UTC.utcoffset(ts):
+        raise PrometheusError(f"{name} must be a timezone-aware UTC datetime")
 
 
 def _normalize_matrix(data: dict[str, Any], service: str) -> list[MetricRecord]:
@@ -55,7 +70,7 @@ def _normalize_matrix(data: dict[str, Any], service: str) -> list[MetricRecord]:
         if not metric_name:
             raise PrometheusError("series missing __name__ label")
 
-        labels = {k: v for k, v in metric.items() if k != "__name__"}
+        base_labels = {k: v for k, v in metric.items() if k != "__name__"}
         for ts, value in series.get("values", []):
             records.append(
                 MetricRecord(
@@ -63,7 +78,7 @@ def _normalize_matrix(data: dict[str, Any], service: str) -> list[MetricRecord]:
                     service=service,
                     metric_name=metric_name,
                     value=float(value),
-                    labels=labels,
+                    labels=dict(base_labels),
                 )
             )
     return records
