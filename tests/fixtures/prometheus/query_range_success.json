@@ -1,0 +1,35 @@
+{
+  "status": "success",
+  "data": {
+    "resultType": "matrix",
+    "result": [
+      {
+        "metric": {
+          "__name__": "http_request_duration_seconds",
+          "instance": "payments-api:8080",
+          "job": "payments-api",
+          "route": "/pay",
+          "quantile": "0.95"
+        },
+        "values": [
+          [1776074400, "0.342"],
+          [1776074460, "0.351"],
+          [1776074520, "0.487"]
+        ]
+      },
+      {
+        "metric": {
+          "__name__": "http_request_duration_seconds",
+          "instance": "payments-api:8080",
+          "job": "payments-api",
+          "route": "/refund",
+          "quantile": "0.95"
+        },
+        "values": [
+          [1776074400, "0.128"],
+          [1776074460, "0.131"]
+        ]
+      }
+    ]
+  }
+}
