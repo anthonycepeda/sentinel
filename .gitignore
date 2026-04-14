@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.python-version
+
+# uv / venv
+.venv/
+
+# Env & secrets
+.env
+
+# Tooling caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Local DB
+sentinel.db
+*.db-journal
+
+# OS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
+*.code-workspace
+
+# Logs
+*.log
+
+# Claude
+.claude/
+.claudeignore
+CLAUDE.md
+meta.json
