@@ -1,5 +1,5 @@
-from datetime import UTC, datetime
-from typing import Any, get_args
+from datetime import UTC, datetime, timedelta
+from typing import Any, cast, get_args
 
 import httpx
 
@@ -56,11 +56,14 @@ def query_range(
             f"Loki returned {payload.get('status')}: {payload.get('error', 'unknown error')}"
         )
 
-    return _normalize_streams(payload["data"], service)
+    data = payload.get("data")
+    if not isinstance(data, dict):
+        raise LokiError("Loki success response missing 'data' object")
+    return _normalize_streams(data, service)
 
 
 def _require_utc(name: str, ts: datetime) -> None:
-    if ts.tzinfo is None or ts.utcoffset() != UTC.utcoffset(ts):
+    if ts.tzinfo is None or ts.utcoffset() != timedelta(0):
         raise LokiError(f"{name} must be a timezone-aware UTC datetime")
 
 
@@ -87,7 +90,7 @@ def _normalize_streams(data: dict[str, Any], service: str) -> list[LogRecord]:
                     service=service,
                     level=level,
                     event_type=event_type,
-                    message=message,
+                    message=str(message),
                 )
             )
 
@@ -101,4 +104,4 @@ def _normalize_level(raw: str | None) -> LogLevel:
     upper = raw.upper()
     if upper not in _VALID_LEVELS:
         raise LokiError(f"unknown log level {raw!r}")
-    return upper  # type: ignore[return-value]
+    return cast(LogLevel, upper)
