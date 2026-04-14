@@ -1,0 +1,29 @@
+{
+  "status": "success",
+  "data": {
+    "resultType": "streams",
+    "result": [
+      {
+        "stream": {
+          "service_name": "payments-api",
+          "level": "error",
+          "event_type": "timeout"
+        },
+        "values": [
+          ["1776074400000000000", "upstream timeout connecting to ledger"],
+          ["1776074405000000000", "upstream timeout connecting to ledger"]
+        ]
+      },
+      {
+        "stream": {
+          "service_name": "payments-api",
+          "level": "INFO",
+          "event_type": "request"
+        },
+        "values": [
+          ["1776074402000000000", "POST /pay 200 12ms"]
+        ]
+      }
+    ]
+  }
+}
