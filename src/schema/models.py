@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 LogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
 Severity = Literal["low", "medium", "high"]
@@ -25,7 +25,7 @@ class MetricRecord(_FrozenModel):
     service: str
     metric_name: str
     value: float
-    labels: dict[str, str] = {}
+    labels: dict[str, str] = Field(default_factory=dict)
 
     @field_validator("timestamp")
     @classmethod
