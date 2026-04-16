@@ -70,12 +70,23 @@ Rather than looking at individual log lines, this detector counts ERROR and CRIT
 
 ```text
 baseline = rolling_mean_of_previous_buckets   (shift(1) excludes current bucket)
-spike    = count > baseline × multiplier       (default multiplier = 2.0)
+spike    = baseline > 0  AND  count > baseline × multiplier   (default multiplier = 2.0)
 ```
 
-The `shift(1)` is important: it means the current bucket is never part of its own baseline. A 60-error minute doesn't "average out" a real incident.
+Two guards are worth understanding:
+
+- **`shift(1)`** — the current bucket is excluded from its own baseline. A 60-error minute doesn't "average out" a real incident.
+- **`baseline > 0`** — a bucket is only flagged if there is a positive historical baseline to compare against. This prevents false positives when the window has never seen any errors before.
 
 **Example:** An API normally throws 1–2 errors per minute. At 14:32 it throws 40. The baseline (rolling mean of the preceding 30 minutes) is ~2. `40 > 2 × 2.0 = 4` → spike detected.
+
+Severity is based on how far the count exceeds the baseline:
+
+| Severity | Condition                                        |
+| -------- | ------------------------------------------------ |
+| low      | count / baseline > multiplier                    |
+| medium   | count / baseline > multiplier × 1.5              |
+| high     | count / baseline > multiplier × 2                |
 
 See: [src/detector/log_spikes.py](src/detector/log_spikes.py)
 
@@ -85,13 +96,23 @@ See: [src/detector/log_spikes.py](src/detector/log_spikes.py)
 
 Combines both signals into a single score per time window:
 
-| Score | Condition |
-| ----- | --------- |
-| 🟢 green | No anomaly events, no log spikes |
-| 🟡 amber | 1–2 anomaly events, no log spikes |
-| 🔴 red | 3+ anomaly events, **or** any log spike |
+| Score    | Condition                                     |
+| -------- | --------------------------------------------- |
+| 🟢 green | No anomaly events, no log spikes              |
+| 🟡 amber | 1–2 anomaly events, no log spikes             |
+| 🔴 red   | 3+ anomaly events, **or** any log spike       |
 
-The logic is a pure function with no state — given the same anomaly and spike lists, it always returns the same score. This makes it trivial to unit test and easy to audit.
+The code checks red first, so "1–2 anomalies = amber" is a consequence of red firing at ≥ 3 — there is no explicit `<= 2` check:
+
+```python
+if log_spike_count > 0 or anomaly_count >= 3:
+    return "red"
+if anomaly_count >= 1:
+    return "amber"
+return "green"
+```
+
+Given the same anomaly and spike lists this always returns the same score, making it trivial to unit test and easy to audit.
 
 See: [src/scorer/health.py](src/scorer/health.py)
 
@@ -130,7 +151,7 @@ tests/
 ```bash
 uv sync
 cp .env.example .env         # fill in PROMETHEUS_URL, LOKI_URL, TARGET_SERVICE
-make test                    # verify everything passes (132 tests)
+make test                    # verify everything passes
 make run                     # start the API on :8000
 ```
 
@@ -138,7 +159,7 @@ To trigger a manual telemetry pull:
 
 ```bash
 make collect
-# {"metrics_written": 42, "logs_written": 130}
+# {"metrics_written": 42, "logs_written": 130}   # numbers will vary
 ```
 
 To query the health score for the last hour:
