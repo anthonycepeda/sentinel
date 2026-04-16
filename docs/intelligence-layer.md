@@ -32,7 +32,8 @@ Both must be built before any ML step begins. This is why the phases below are s
 Add a way to record confirmed incidents: what happened, when it started and ended, and how severe it was.
 
 **API:**
-```
+
+```text
 POST /incidents   { start, end, description, severity }
 GET  /incidents?from=&to=
 ```
@@ -50,9 +51,12 @@ GET  /incidents?from=&to=
 The current schema stores every raw `MetricRecord` and `LogRecord` indefinitely. For prediction you need weeks of history, but raw per-second records become expensive quickly.
 
 **What to build:**
+
 - Configurable `HISTORY_RETENTION_DAYS` (raw records kept for N days, then dropped)
 - Hourly and daily aggregate tables: `mean`, `p95`, `max`, `error_count` per metric per service
 - A background compaction job (or a `POST /compact` endpoint) that rolls up old raw records into aggregates
+
+Note: if `POST /compact` is added, include it in the README API table.
 
 ---
 
@@ -61,6 +65,7 @@ The current schema stores every raw `MetricRecord` and `LogRecord` indefinitely.
 Z-score detects magnitude (is this value high?). Trend detection asks: is this value *rising*, and how fast?
 
 **What to build:** extend `detector/` with a `trend.py` module that computes:
+
 - Rolling linear regression slope over a configurable window (is the metric trending up or down?)
 - Acceleration (is the slope itself increasing?)
 - A `TrendEvent` model: `{ timestamp, metric_name, slope, acceleration, direction }`
@@ -76,6 +81,7 @@ Z-score detects magnitude (is this value high?). Trend detection asks: is this v
 Given a labeled incident, look back N minutes and ask: what signals were present before it?
 
 **What to build:** a `POST /incidents/{id}/analyze` endpoint (or offline script) that:
+
 1. Takes the incident's `start` time
 2. Looks back a configurable window (e.g. 60 minutes before)
 3. Computes a feature vector: metric slopes, error acceleration, how many anomaly events fired, which metrics were flagged first
@@ -90,11 +96,12 @@ This builds the training dataset.
 Replace manual incident labeling with automatic import from Dynatrace.
 
 **What to build:** a `collector/dynatrace.py` module that:
+
 - Calls the Dynatrace Problems API (`/api/v2/problems`)
 - Normalizes each Problem into Sentinel's `Incident` model (start/end/severity/description)
 - Can be triggered via `POST /collect/incidents` or run on a schedule
 
-**Config additions:** `DYNATRACE_URL`, `DYNATRACE_API_TOKEN`.
+**Config additions:** `DYNATRACE_URL: str`, `DYNATRACE_API_TOKEN: SecretStr` (use `pydantic.SecretStr` — never a plain string for API tokens).
 
 **Dependency:** A1 must exist (the `incidents` table) before this can write to it.
 
@@ -107,7 +114,8 @@ Replace manual incident labeling with automatic import from Dynatrace.
 Train a classifier on the feature vectors from B1 to output P(incident in next N minutes).
 
 **Approach:**
-- Library: scikit-learn (logistic regression or gradient boosting — start simple, explainability matters)
+
+- Library: `scikit-learn` + `joblib` — add both via `uv add scikit-learn joblib` when this phase starts
 - Input features: metric slopes, error acceleration, anomaly event counts, trend directions from the preceding window
 - Output: probability score 0–1 + which features contributed most (feature importances)
 - Retrain: `POST /model/train` triggers a training run over all labeled incidents in the DB
@@ -121,11 +129,12 @@ Train a classifier on the feature vectors from B1 to output P(incident in next N
 
 Surface the model's output via the API.
 
-```
+```text
 GET /predict?from=&to=
 ```
 
 Response:
+
 ```json
 {
   "probability": 0.74,
@@ -147,6 +156,7 @@ The `contributing_signals` field is the explainability hook — it answers *why*
 Close the loop: when a predicted incident does or does not happen, record the outcome and use it to improve the model.
 
 **What to build:**
+
 - `POST /predictions/{id}/outcome` — mark prediction as correct, false positive, or missed
 - Aggregate false positive / recall metrics over time
 - Trigger retraining when outcome count crosses a threshold
@@ -155,7 +165,7 @@ Close the loop: when a predicted incident does or does not happen, record the ou
 
 ## Dependency map
 
-```
+```text
 A1 incident labeling
   └─► B1 precursor extraction ──► C1 prediction model ──► C2 /predict endpoint
   └─► B2 Dynatrace integration                         └─► C3 feedback loop
