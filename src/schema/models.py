@@ -52,6 +52,7 @@ class AnomalyEvent(_FrozenModel):
     metric_name: str
     value: float
     z_score: float
+    z_threshold: float
     severity: Severity
 
     @field_validator("timestamp")

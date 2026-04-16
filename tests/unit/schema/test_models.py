@@ -79,6 +79,7 @@ class TestAnomalyEvent:
             metric_name="cpu",
             value=0.99,
             z_score=3.1,
+            z_threshold=2.5,
             severity="high",
         )
         assert e.severity == "high"
@@ -90,6 +91,7 @@ class TestAnomalyEvent:
             metric_name="cpu",
             value=0.5,
             z_score=2.6,
+            z_threshold=2.5,
             severity="medium",
         )
         assert AnomalyEvent.model_validate(e.model_dump()) == e
@@ -102,6 +104,7 @@ class TestAnomalyEvent:
                 metric_name="cpu",
                 value=0.5,
                 z_score=2.6,
+                z_threshold=2.5,
                 severity="critical",
             )
 
