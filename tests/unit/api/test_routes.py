@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 
 from api.app import app
 from config import Settings, get_settings
-from schema.models import AnomalyEvent, HealthScore, LogSpikeEvent
+from schema.models import AnomalyEvent, HealthScore
 
 FROM_STR = "2026-03-25T10:00:00Z"
 TO_STR = "2026-03-25T10:05:00Z"
@@ -23,9 +23,11 @@ TEST_SETTINGS = Settings(
 
 @pytest.fixture(autouse=True)
 def override_settings():
+    get_settings.cache_clear()
     app.dependency_overrides[get_settings] = lambda: TEST_SETTINGS
     yield
     app.dependency_overrides.clear()
+    get_settings.cache_clear()
 
 
 @pytest.fixture()
@@ -147,14 +149,11 @@ class TestGetScore:
             anomaly_count=5,
             log_spike_count=2,
         )
-        spike = LogSpikeEvent(
-            timestamp=FROM_DT, service="svc", count=10, baseline=2.0, severity="high"
-        )
         with (
             patch("api.routes.read_metrics", return_value=[]),
             patch("api.routes.read_logs", return_value=[]),
             patch("api.routes.detect_anomalies", return_value=[]),
-            patch("api.routes.detect_log_spikes", return_value=[spike]),
+            patch("api.routes.detect_log_spikes", return_value=[]),
             patch("api.routes.score_health", return_value=red),
         ):
             r = client.get(f"/score?from={FROM_STR}&to={TO_STR}")
@@ -205,3 +204,37 @@ class TestCollect:
         ):
             client.post("/collect")
         assert call_order[0] == "init"
+
+    def test_prometheus_client_uses_prometheus_url(self, client: TestClient):
+        captured: list[str] = []
+
+        def capture_prom(c, **_kwargs):
+            captured.append(str(c.base_url))
+            return []
+
+        with (
+            patch("api.routes.prometheus.query_range", side_effect=capture_prom),
+            patch("api.routes.loki.query_range", return_value=[]),
+            patch("api.routes.init_db"),
+            patch("api.routes.write_metrics", return_value=0),
+            patch("api.routes.write_logs", return_value=0),
+        ):
+            client.post("/collect")
+        assert captured[0].rstrip("/") == TEST_SETTINGS.prometheus_url.rstrip("/")
+
+    def test_loki_client_uses_loki_url(self, client: TestClient):
+        captured: list[str] = []
+
+        def capture_loki(c, **_kwargs):
+            captured.append(str(c.base_url))
+            return []
+
+        with (
+            patch("api.routes.prometheus.query_range", return_value=[]),
+            patch("api.routes.loki.query_range", side_effect=capture_loki),
+            patch("api.routes.init_db"),
+            patch("api.routes.write_metrics", return_value=0),
+            patch("api.routes.write_logs", return_value=0),
+        ):
+            client.post("/collect")
+        assert captured[0].rstrip("/") == TEST_SETTINGS.loki_url.rstrip("/")

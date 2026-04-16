@@ -64,17 +64,20 @@ def collect(settings: SettingsDep) -> dict[str, int]:
     step = f"{settings.collection_interval_minutes}m"
     svc = settings.target_service
 
-    with httpx.Client() as client:
+    # Prometheus and Loki use different base URLs — separate clients required
+    with httpx.Client(base_url=settings.prometheus_url) as prom_client:
         metrics = prometheus.query_range(
-            client,
+            prom_client,
             query=f'{{job="{svc}"}}',
             start=start,
             end=now,
             step=step,
             service=svc,
         )
+
+    with httpx.Client(base_url=settings.loki_url) as loki_client:
         logs = loki.query_range(
-            client,
+            loki_client,
             query=f'{{service="{svc}"}}',
             start=start,
             end=now,
