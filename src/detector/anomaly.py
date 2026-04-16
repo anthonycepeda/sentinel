@@ -1,6 +1,6 @@
 import pandas as pd
 
-from schema.models import AnomalyEvent, MetricRecord
+from schema.models import AnomalyEvent, MetricRecord, Severity
 
 
 def detect_anomalies(
@@ -34,7 +34,7 @@ def detect_anomalies(
     )
 
     events: list[AnomalyEvent] = []
-    window = f"{window_minutes}min"
+    window = f"{window_minutes}min"  # "min" = minutes alias (pandas >= 2.2; "T" is deprecated)
 
     for (service, metric_name), group in df.groupby(["service", "metric_name"]):
         group = group.sort_values("timestamp").set_index("timestamp")
@@ -54,7 +54,8 @@ def detect_anomalies(
                     service=str(service),
                     metric_name=str(metric_name),
                     value=float(row["value"]),
-                    z_score=round(z, 4),
+                    z_score=z,
+                    z_threshold=z_threshold,
                     severity=_severity(abs(z), z_threshold),
                 )
             )
@@ -62,7 +63,14 @@ def detect_anomalies(
     return sorted(events, key=lambda e: e.timestamp)
 
 
-def _severity(abs_z: float, threshold: float) -> str:
+def _severity(abs_z: float, threshold: float) -> Severity:
+    """Classify z-score magnitude relative to threshold.
+
+    Boundaries are exclusive: abs_z must strictly exceed each band.
+    - abs_z > threshold * 2  → "high"
+    - abs_z > threshold * 1.5 → "medium"
+    - else                   → "low"
+    """
     if abs_z > threshold * 2:
         return "high"
     if abs_z > threshold * 1.5:
