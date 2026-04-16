@@ -9,6 +9,7 @@ Statistical methods only — no ML training, no multi-service correlation. Desig
 ```bash
 uv sync
 cp .env.example .env         # fill in PROMETHEUS_URL, LOKI_URL, TARGET_SERVICE
+make test                    # verify everything passes
 make run                     # starts uvicorn on :8000
 ```
 
@@ -20,7 +21,7 @@ make run                     # starts uvicorn on :8000
 | `make run`      | Start the API server on port 8000 (hot-reload)  |
 | `make test`     | Run the full test suite                         |
 | `make lint`     | Check with ruff                                 |
-| `make format`   | Auto-fix and format with ruff                   |
+| `make fmt`      | Auto-fix and format with ruff                   |
 | `make collect`  | POST /collect — trigger a manual telemetry pull |
 | `make clean`    | Remove `.venv`, caches, and `sentinel.db`       |
 
@@ -40,7 +41,7 @@ Timestamps use ISO 8601 UTC format, e.g. `2026-03-25T10:00:00Z`.
 | Score | Condition                                  |
 | ----- | ------------------------------------------ |
 | green | No anomalies, no log spikes                |
-| amber | 1-2 metric anomalies, no log spikes        |
+| amber | 1-2 anomaly events, no log spikes          |
 | red   | 3+ metric anomalies, or any log spike      |
 
 ## Environment variables
