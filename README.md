@@ -83,4 +83,5 @@ Timestamps use ISO 8601 UTC, e.g. `2026-03-25T10:00:00Z`.
 
 - [How it works](docs/how-it-works.md) — data flow, detection algorithms, project layout, testing strategy, design decisions
 - [Configuration](docs/configuration.md) — all environment variables with tuning guidance
+- [Intelligence layer roadmap](docs/intelligence-layer.md) — planned: incident labeling, trend detection, ML-based failure prediction, Dynatrace integration
 - [AGENTS.md](AGENTS.md) — quick reference for conventions and layer rules
