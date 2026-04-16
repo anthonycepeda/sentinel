@@ -10,11 +10,11 @@ cp .env.example .env   # copy the template, then fill in the three required valu
 
 These three must be set before the app will start.
 
-| Variable         | Description                              |
-| ---------------- | ---------------------------------------- |
-| `PROMETHEUS_URL` | Prometheus HTTP API base URL             |
-| `LOKI_URL`       | Loki HTTP API base URL                   |
-| `TARGET_SERVICE` | Name of the microservice to monitor      |
+| Variable | Description |
+| --- | --- |
+| `PROMETHEUS_URL` | Prometheus HTTP API base URL |
+| `LOKI_URL` | Loki HTTP API base URL |
+| `TARGET_SERVICE` | Name of the microservice to monitor |
 
 **Example:**
 
@@ -28,13 +28,13 @@ TARGET_SERVICE=payments-api
 
 ## Optional (with defaults)
 
-| Variable                      | Default         | Description                                                                   |
-| ----------------------------- | --------------- | ----------------------------------------------------------------------------- |
-| `COLLECTION_INTERVAL_MINUTES` | `5`             | How many minutes of telemetry each `/collect` call pulls                      |
-| `ANOMALY_WINDOW_MINUTES`      | `30`            | Rolling window for both Z-score and log spike baseline calculation             |
-| `ANOMALY_Z_THRESHOLD`         | `2.5`           | `abs(z)` must exceed this to flag a metric anomaly                            |
-| `LOG_SPIKE_MULTIPLIER`        | `2.0`           | Error count must exceed `baseline × multiplier` to flag a log spike           |
-| `DB_PATH`                     | `./sentinel.db` | Path to the SQLite database file                                              |
+| Variable | Default | Description |
+| --- | --- | --- |
+| `COLLECTION_INTERVAL_MINUTES` | `5` | Lookback window per `/collect`: how far back to query + Prometheus step |
+| `ANOMALY_WINDOW_MINUTES` | `30` | Rolling window for Z-score and log spike baseline calculation |
+| `ANOMALY_Z_THRESHOLD` | `2.5` | `abs(z)` must exceed this to flag a metric anomaly |
+| `LOG_SPIKE_MULTIPLIER` | `2.0` | Error count must exceed `baseline × multiplier` to flag a log spike |
+| `DB_PATH` | `./sentinel.db` | Path to the SQLite database file |
 
 ---
 

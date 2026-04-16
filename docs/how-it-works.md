@@ -1,5 +1,15 @@
 # How Sentinel works
 
+## What you will learn from reading this codebase
+
+- How to build a typed data pipeline in Python with Pydantic models
+- How Z-score anomaly detection works on time-series data
+- How rolling-window baselines catch log-error bursts
+- How to structure a FastAPI service with clean layer boundaries (no business logic in routes)
+- How to test each layer independently — collectors with static fixtures, detectors as pure functions, routes with `TestClient` + dependency overrides
+
+---
+
 ## Data flow
 
 ```text
