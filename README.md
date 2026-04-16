@@ -4,7 +4,7 @@ A learning project for building an AIOps observability system from scratch.
 
 Sentinel pulls Prometheus metrics and Loki logs from a single microservice, detects anomalies using plain statistical methods (Z-score + log-error spike detection), and reports a **green / amber / red health score** over any time range you query.
 
-No ML training. No multi-service correlation. Every algorithm is a few lines of maths you can read and explain to someone.
+No ML training today. Every algorithm is a few lines of maths you can read and explain to someone. The [intelligence layer roadmap](docs/intelligence-layer.md) describes what's next: incident learning, trend detection, and failure prediction.
 
 ## Quickstart
 
@@ -83,4 +83,5 @@ Timestamps use ISO 8601 UTC, e.g. `2026-03-25T10:00:00Z`.
 
 - [How it works](docs/how-it-works.md) — data flow, detection algorithms, project layout, testing strategy, design decisions
 - [Configuration](docs/configuration.md) — all environment variables with tuning guidance
+- [Intelligence layer roadmap](docs/intelligence-layer.md) — planned: incident labeling, trend detection, ML-based failure prediction, Dynatrace integration
 - [AGENTS.md](AGENTS.md) — quick reference for conventions and layer rules
