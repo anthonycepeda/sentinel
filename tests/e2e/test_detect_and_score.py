@@ -9,6 +9,7 @@ instructions.md is enforced end-to-end.
 from datetime import UTC, datetime, timedelta
 
 import pytest
+from pydantic import ValidationError
 
 from detector.anomaly import detect_anomalies
 from detector.log_spikes import detect_log_spikes
@@ -160,10 +161,10 @@ class TestRedScoreLogSpike:
 
 
 class TestMultiService:
-    def test_spike_in_one_service_does_not_affect_score_of_other(self):
-        # svc-a has a metric spike (→ amber), svc-b has a log spike (→ red for svc-b)
-        # score_health receives the full combined anomaly+spike lists —
-        # it aggregates counts, so both signals show up. Verify counts are correct.
+    def test_multi_service_signals_aggregated_into_combined_score(self):
+        # svc-a produces a metric anomaly; svc-b produces a log spike.
+        # score_health aggregates all signals — the spike forces red and
+        # both counts are non-zero.
         metrics_a = [metric(i, 1.0, service="svc-a") for i in range(20)]
         metrics_a.append(metric(20, 100.0, service="svc-a"))
 
@@ -190,8 +191,6 @@ class TestWindowFields:
         assert score.window_end == end
 
     def test_health_score_is_frozen(self):
-        from pydantic import ValidationError
-
         score = run([], [])
         with pytest.raises(ValidationError):
             score.score = "red"  # type: ignore[misc]
