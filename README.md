@@ -8,18 +8,52 @@ No ML training. No multi-service correlation. Every algorithm is a few lines of 
 
 ## Quickstart
 
+Prerequisites: Python 3.12+, [uv](https://docs.astral.sh/uv/getting-started/installation/)
+
+### 1. Install dependencies
+
 ```bash
 uv sync
-cp .env.example .env   # fill in PROMETHEUS_URL, LOKI_URL, TARGET_SERVICE
-make test              # verify everything passes
-make run               # start the API on :8000
 ```
 
-Trigger a telemetry pull, then query the health score:
+### 2. Configure
 
 ```bash
-make collect
-curl "http://localhost:8000/score?from=2026-03-25T09:00:00Z&to=2026-03-25T10:00:00Z"
+cp .env.example .env
+```
+
+Open `.env` and set the three required values — the rest have sensible defaults:
+
+```bash
+PROMETHEUS_URL=http://localhost:9090   # your Prometheus instance
+LOKI_URL=http://localhost:3100         # your Loki instance
+TARGET_SERVICE=payments-api            # the service name to monitor
+```
+
+### 3. Run the tests (no live services needed — everything is mocked)
+
+```bash
+make test
+```
+
+### 4. Start the API
+
+```bash
+make run   # listens on http://localhost:8000
+```
+
+### 5. Pull telemetry and check the health score
+
+In a second terminal, once the server is running:
+
+```bash
+make collect   # pulls the last 5 minutes from Prometheus + Loki
+
+# Query the score for the window you just collected.
+# 'now' and 'five minutes ago' as ISO 8601 UTC:
+NOW=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+FIVE_MIN_AGO=$(date -u -v-5M +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -d '-5 minutes' +%Y-%m-%dT%H:%M:%SZ)
+curl "http://localhost:8000/score?from=${FIVE_MIN_AGO}&to=${NOW}"
 ```
 
 ## API
