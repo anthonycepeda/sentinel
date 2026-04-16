@@ -101,6 +101,7 @@ class TestDetectLogSpikes:
         records.extend(spike_at(35, 20))
         records.extend(spike_at(25, 20))
         events = detect_log_spikes(records, multiplier=2.0, window_minutes=30)
+        assert len(events) >= 2
         timestamps = [e.timestamp for e in events]
         assert timestamps == sorted(timestamps)
 

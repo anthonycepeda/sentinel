@@ -1,3 +1,5 @@
+from datetime import UTC
+
 import pandas as pd
 
 from schema.models import LogRecord, LogSpikeEvent, Severity
@@ -48,7 +50,7 @@ def detect_log_spikes(
             baseline = float(baselines[ts])
             events.append(
                 LogSpikeEvent(
-                    timestamp=ts.to_pydatetime(),
+                    timestamp=ts.to_pydatetime().replace(tzinfo=UTC),
                     service=str(service),
                     count=int(count),
                     baseline=baseline,
